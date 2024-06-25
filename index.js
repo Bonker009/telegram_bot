@@ -1,25 +1,73 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const TelegramBot = require("node-telegram-bot-api");
+const crypto = require("crypto");
+const { log } = require("console");
 
 const app = express();
 const port = process.env.PORT || 3000;
-const botToken = "7020662782:AAG5T5I2fSBnRnyJun5A5m6ghw8eSTHLmhM";
-const bot = new TelegramBot(botToken);
-app.use(bodyParser.json());
+const botToken = "7493553730:AAFtCR1eBNqxYu5XwyKAuJn1qmPLbex-gjI";
+const bot = new TelegramBot(botToken, { polling: true });
+
+app.use(express.json());
+
+// app.post("/github-webhook", async (req, res) => {
+//   console.log("Received a request at generic endpoint:");
+//   console.log(req.body);
+//   bot.sendMessage("-1002113369147", "seyha");
+//   res.send("Hello World");
+// });
 
 app.post("/github-webhook", (req, res) => {
-  const { body } = req;
-  if (req.headers["x-github-event"] === "push") {
+  const { body, headers } = req;
+  console.log("GitHub webhook received:");
+  console.log("Headers:", headers);
+  console.log("Body:", body);
+
+  const secret =
+    "62a2922d806a73e66c03f5b6a01fb88346212edbfefe7216653a49a27fe2f51b";
+  const payload = JSON.stringify(body);
+  const signature = headers["x-hub-signature"];
+
+  if (!validateSignature(signature, payload, secret)) {
+    console.error("Invalid GitHub webhook signature");
+    return res.status(403).send("Invalid signature");
+  }
+
+  if (headers["x-github-event"] === "push") {
     const repository = body.repository.full_name;
     const pushedBy = body.pusher.name;
     const commitCount = body.commits.length;
+    const commits = body.commits
+      .map((commit) => {
+        const commitDetails = [
+          `\n- [${commit.message}](${commit.url}) by ${commit.author.name}`,
+          `    - *Timestamp:* ${commit.timestamp}`,
+          `    - *Added files:* ${commit.added.join(", ") || "None"}`,
+          `    - *Modified files:* ${commit.modified.join(", ") || "None"}`,
+          `    - *Removed files:* ${commit.removed.join(", ") || "None"}`,
+        ];
+        return commitDetails.join("\n");
+      })
+      .join("\n");
 
     const message =
-      `🚀 Push event in ${repository}\n` +
-      `👤 Pushed by: ${pushedBy}\n` +
-      `🔵 Number of commits: ${commitCount}`;
-    const chatId = "1144386354";
+      `🚀 *Push event in ${repository}*\n` +
+      `👤 *Pushed by:* ${pushedBy}\n` +
+      `🔵 *Number of commits:* ${commitCount}\n` +
+      `📄 *Commits:* ${commits}`;
+
+    const chatId = "-1002113369147";
+    console.log(message);
+    bot
+      .sendMessage(chatId, "Test message")
+      .then(() => {
+        console.log("Test message sent successfully");
+      })
+      .catch((error) => {
+        console.error("Error sending test message to Telegram:", error.message);
+      });
+
     bot
       .sendMessage(chatId, message)
       .then(() => {
@@ -34,6 +82,16 @@ app.post("/github-webhook", (req, res) => {
     res.status(200).send("Received webhook event");
   }
 });
+
+function validateSignature(signature, payload, secret) {
+  const hmac = crypto.createHmac("sha1", secret);
+  const digest = Buffer.from(
+    "sha1=" + hmac.update(payload).digest("hex"),
+    "utf8"
+  );
+  const checksum = Buffer.from(signature, "utf8");
+  return crypto.timingSafeEqual(digest, checksum);
+}
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
