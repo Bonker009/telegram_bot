@@ -20,9 +20,6 @@ app.use(express.json());
 
 app.post("/github-webhook", (req, res) => {
   const { body, headers } = req;
-  console.log("GitHub webhook received:");
-  console.log("Headers:", headers);
-  console.log("Body:", body);
 
   const secret =
     "62a2922d806a73e66c03f5b6a01fb88346212edbfefe7216653a49a27fe2f51b";
@@ -58,16 +55,6 @@ app.post("/github-webhook", (req, res) => {
       `📄 *Commits:* ${commits}`;
 
     const chatId = "-1002113369147";
-    console.log(message);
-    bot
-      .sendMessage(chatId, "Test message")
-      .then(() => {
-        console.log("Test message sent successfully");
-      })
-      .catch((error) => {
-        console.error("Error sending test message to Telegram:", error.message);
-      });
-
     bot
       .sendMessage(chatId, message)
       .then(() => {
