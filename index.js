@@ -2,7 +2,6 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const TelegramBot = require("node-telegram-bot-api");
 const crypto = require("crypto");
-const { log } = require("console");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -10,13 +9,6 @@ const botToken = "7493553730:AAFtCR1eBNqxYu5XwyKAuJn1qmPLbex-gjI";
 const bot = new TelegramBot(botToken, { polling: true });
 
 app.use(express.json());
-
-// app.post("/github-webhook", async (req, res) => {
-//   console.log("Received a request at generic endpoint:");
-//   console.log(req.body);
-//   bot.sendMessage("-1002113369147", "seyha");
-//   res.send("Hello World");
-// });
 
 app.post("/github-webhook", (req, res) => {
   const { body, headers } = req;
@@ -53,10 +45,10 @@ app.post("/github-webhook", (req, res) => {
       `👤 *Pushed by:* ${pushedBy}\n` +
       `🔵 *Number of commits:* ${commitCount}\n` +
       `📄 *Commits:* ${commits}`;
-
+   const truncatedMessage = message.substring(0, 4096);
     const chatId = "-1002113369147";
     bot
-      .sendMessage(chatId, message)
+      .sendMessage(chatId, truncatedMessage, { parse_mode: "MarkdownV2" })
       .then(() => {
         console.log("Message sent to Telegram successfully");
         res.status(200).send("Message sent to Telegram successfully");
